@@ -1,11 +1,26 @@
 [project]
 name = "curve-stableswap-lab"
 version = "0.1.0"
-description = "Add your description here"
+description = "Security-oriented research lab for Curve StableSwap and StableSwap NG"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
-    "eth-utils>=6.0.0",
-    "pytest>=9.0.3",
-    "titanoboa>=0.2.8",
+    "eth-utils",
+    "ipykernel",
+    "jupyter",
+    "matplotlib",
+    "moccasin",
+    "numpy",
+    "pandas",
+    "pytest",
+    "titanoboa",
 ]
+
+[build-system]
+requires = ["uv_build>=0.9.0,<0.10.0"]
+build-backend = "uv_build"
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+python_files = ["test_*.py"]

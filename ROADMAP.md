@@ -16,11 +16,23 @@ Status: mostly complete
 
 ## Phase 2 — Simulation notebooks
 
-Planned:
+Status: Python simulation package completed; notebooks pending.
 
+Completed:
+- `stableswap_math.py`
+- `dynamic_fee.py`
+- `scenarios.py`
+- Python unit tests for simulation modules
+
+Current local result:
+- Main tests: `109 passed`
+- Historical attack tests: `7 passed`
+
+Next:
 - `01_amp_slippage_surface.ipynb`
 - `02_dynamic_fee_imbalance.ipynb`
 - `03_quote_staleness_rate_change.ipynb`
+
 
 Goal:
 - visualize how `A`, imbalance, dynamic fees, and rate changes affect quotes and LP/accounting behavior
@@ -36,15 +48,7 @@ Planned:
 
 ## Phase 4 — Historical attack case study
 
-Status: initial toy reproduction completed
-
-Completed:
-- vulnerable virtual-price inflation test
-- victim overvaluation test
-- non-reentrant control tests
-- safe-ordering mitigation tests
-
-Next:
-- write case-study note
-- add diagrams
-- optionally add a Solidity/Foundry comparison version
+Status:
+- Python package skeleton completed
+- StableSwap math module completed
+- Python math tests completed

@@ -197,7 +197,17 @@ Completed:
 ```bash
 uv run pytest historical-attacks/curve-readonly-reentrancy/tests -q
 # 7 passed
+
+uv run pytest historical-attacks/curve-readonly-reentrancy/tests -q
+# 7 passed
+
+uv run pytest historical-attacks/curve-readonly-reentrancy/tests -q
+# 7 passed
+
+uv run pytest tests -q
+# 109 passed
 ```
+
 
 Planned:
 
