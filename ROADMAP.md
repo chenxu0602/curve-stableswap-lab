@@ -36,9 +36,15 @@ Planned:
 
 ## Phase 4 — Historical attack case study
 
-Planned:
+Status: initial toy reproduction completed
 
-- Curve read-only reentrancy / LP oracle manipulation toy reproduction
-- mechanism explanation
-- minimal tests
-- security lessons for external integrators
+Completed:
+- vulnerable virtual-price inflation test
+- victim overvaluation test
+- non-reentrant control tests
+- safe-ordering mitigation tests
+
+Next:
+- write case-study note
+- add diagrams
+- optionally add a Solidity/Foundry comparison version

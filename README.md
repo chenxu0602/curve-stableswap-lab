@@ -57,7 +57,7 @@ The goal of this repo is to isolate those mechanisms with small, explainable tes
 ├── notes/                  # Review notes, final review, invariants, test plan
 ├── notebooks/              # Planned simulation notebooks
 ├── outputs/                # Generated figures and tables
-├── historical-attacks/     # Planned historical attack reproductions
+├── historical-attacks/     # Partially completed historical attack reproductions
 ├── METHODOLOGY.md
 ├── LIMITATIONS.md
 └── ROADMAP.md
@@ -200,7 +200,7 @@ Planned:
 - metapool underlying quote vs nested execution
 - `get_dx` / reverse-quote approximation under dynamic fee paths
 - simulation notebooks
-- Curve read-only reentrancy historical case study
+- Curve read-only reentrancy / LP oracle manipulation toy reproduction: initial version completed
 
 ## Related files
 
