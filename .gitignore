@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+.env
+
+# OS/editor
+.DS_Store
+.vscode/
+.idea/
+
+# Outputs
+outputs/figures/*
+outputs/tables/*
+!outputs/figures/.gitkeep
+!outputs/tables/.gitkeep
+
+# Jupyter
+.ipynb_checkpoints/
