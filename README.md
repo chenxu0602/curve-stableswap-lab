@@ -194,6 +194,11 @@ Completed:
 - admin-fee unit conversion tests
 - selected real StableSwap NG integration checks
 
+```bash
+uv run pytest historical-attacks/curve-readonly-reentrancy/tests -q
+# 7 passed
+```
+
 Planned:
 
 - factory negative tests
