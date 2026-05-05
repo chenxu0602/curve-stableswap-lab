@@ -2,7 +2,7 @@
 
 Security-oriented research lab for Curve StableSwap and StableSwap NG.
 
-This repository studies Curve-style AMM accounting from an auditing perspective: invariant math, normalized balances, rate providers, ERC4626 conversion, rebasing tokens, quote/execution freshness, admin-fee unit accounting, and zap temporary custody.
+This repository studies Curve-style AMM accounting from an auditing perspective: invariant math, normalized balances, rate providers, ERC4626 conversion, rebasing tokens, quote/execution freshness, admin-fee unit accounting, zap temporary custody, and LP-oracle integration risk.
 
 This is not a full protocol audit. It is a focused research and characterization artifact.
 
@@ -28,8 +28,9 @@ The important review surfaces are no longer only `get_D`, `get_y`, and `get_y_D`
 - optimistic-transfer settlement via `exchange_received`
 - admin-fee unit conversion
 - zap temporary custody and historical balance contamination
+- LP virtual-price consumption by external protocols
 
-The goal of this repo is to isolate those mechanisms with small, explainable tests and notes.
+The goal of this repo is to isolate those mechanisms with small, explainable tests, notes, historical attack reproductions, and focused simulation notebooks.
 
 ## Current coverage
 
@@ -47,17 +48,23 @@ The goal of this repo is to isolate those mechanisms with small, explainable tes
 - Admin-fee raw-unit conversion
 - MetaZap-style temporary custody characterization
 - Selected real StableSwap NG integration tests
+- Curve read-only reentrancy / LP oracle manipulation toy reproduction
+- Python simulation package for:
+  - amplification vs slippage
+  - dynamic fee vs imbalance
+  - quote staleness under rate changes
 
 ## Repository structure
 
 ```text
 .
 ├── contracts/              # Vyper harnesses and mocks
-├── tests/                  # Boa / pytest characterization tests
+├── tests/                  # Boa / pytest characterization tests and Python simulation tests
 ├── notes/                  # Review notes, final review, invariants, test plan
-├── notebooks/              # Planned simulation notebooks
+├── notebooks/              # Simulation notebooks
 ├── outputs/                # Generated figures and tables
-├── historical-attacks/     # Partially completed historical attack reproductions
+├── src/                    # Python simulation package
+├── historical-attacks/     # Curve-related historical attack reproductions
 ├── METHODOLOGY.md
 ├── LIMITATIONS.md
 └── ROADMAP.md
@@ -67,13 +74,12 @@ The goal of this repo is to isolate those mechanisms with small, explainable tes
 
 ```bash
 uv sync
+
 uv run pytest tests -q
-```
+# 109 passed
 
-Current local result:
-
-```text
-47 passed
+uv run pytest historical-attacks/curve-readonly-reentrancy/tests -q
+# 7 passed
 ```
 
 ## Key notes
@@ -84,9 +90,32 @@ Current local result:
 - [`notes/test-plan.md`](notes/test-plan.md)
 - [`notes/function-notes.md`](notes/function-notes.md)
 
+## Simulation notebooks
+
+- [`notebooks/01_amp_slippage_surface.ipynb`](notebooks/01_amp_slippage_surface.ipynb)
+  - Shows how amplification `A` changes near-peg slippage.
+- [`notebooks/02_dynamic_fee_imbalance.ipynb`](notebooks/02_dynamic_fee_imbalance.ipynb)
+  - Shows how StableSwap NG-style dynamic fees increase with imbalance.
+- [`notebooks/03_quote_staleness_rate_change.ipynb`](notebooks/03_quote_staleness_rate_change.ipynb)
+  - Shows how rate changes can make quote and execution values diverge.
+
+## Historical attack case study
+
+- [`historical-attacks/curve-readonly-reentrancy/`](historical-attacks/curve-readonly-reentrancy/)
+  - Toy reproduction of Curve read-only reentrancy / LP oracle manipulation.
+  - Demonstrates how a transiently inflated `get_virtual_price()` can cause an external consumer to overvalue LP collateral.
+  - Includes a safe-ordering mitigation comparison.
+
+Run:
+
+```bash
+uv run pytest historical-attacks/curve-readonly-reentrancy/tests -q
+# 7 passed
+```
+
 ## Main takeaway
 
-StableSwap NG is still mostly legacy StableSwap math, but the highest-value review surface has shifted from invariant algebra toward accounting semantics and configuration semantics.
+StableSwap NG is still mostly legacy StableSwap math, but the highest-value review surface has shifted from invariant algebra toward accounting semantics, configuration semantics, and integration semantics.
 
 The solver can be correct while the economic interpretation of the inputs is wrong.
 
@@ -94,6 +123,12 @@ That makes this path especially important:
 
 ```text
 token behavior -> asset type -> stored_rates -> xp -> D/y -> LP accounting
+```
+
+For external integrations, a second path is equally important:
+
+```text
+pool state transition -> virtual price / LP price -> downstream collateral or oracle consumer
 ```
 
 ## Review map
@@ -104,7 +139,8 @@ token behavior -> asset type -> stored_rates -> xp -> D/y -> LP accounting
 | Normalization | Do `stored_rates` and `xp` represent the intended economic value? |
 | Token semantics | Are plain, oracle-rate, ERC4626, and rebasing assets classified correctly? |
 | Settlement | Do transfers, admin fees, and stored balances reconcile in the same unit system? |
-| Integration | Do views, zaps, and routers understand quote freshness and temporary custody semantics? |
+| Integration | Do views, zaps, routers, and collateral consumers understand quote freshness and temporary custody semantics? |
+| LP oracle usage | Can `get_virtual_price()` or similar pool views be consumed during an inconsistent state? |
 
 ## Test themes
 
@@ -127,6 +163,7 @@ The dynamic-fee tests characterize off-peg fee amplification:
 - balanced pool returns base fee
 - disabled multiplier returns base fee even when imbalanced
 - imbalanced pool produces higher fee
+- higher off-peg multiplier increases fee under imbalance
 
 ### Asset types and stored rates
 
@@ -179,9 +216,42 @@ The MetaZap-style tests characterize full-balance flush behavior:
 - pre-existing dust can be transferred to the current receiver
 - historical balance contamination should be understood before being treated as a vulnerability
 
+### Read-only reentrancy / LP oracle manipulation
+
+The historical attack tests characterize a Curve-style read-only reentrancy mechanism:
+
+- vulnerable ordering can temporarily inflate a `get_virtual_price()`-style read
+- an external consumer can overvalue LP collateral during callback
+- the attacker can borrow more than allowed under the final coherent pool state
+- the same inflated borrow amount reverts without the transient price distortion
+- safe ordering removes the exploit window while preserving normal borrowing behavior
+
+## Python simulation package
+
+The Python package lives under:
+
+```text
+src/curve_stableswap_lab/
+├── stableswap_math.py
+├── dynamic_fee.py
+├── scenarios.py
+└── plotting.py
+```
+
+It provides reusable code for the notebooks:
+
+- `stableswap_math.py`
+  - integer-style `get_D`, `get_y`, `get_y_D`, `quote_dy`, and `xp_from_balances`
+- `dynamic_fee.py`
+  - StableSwap NG-style off-peg dynamic fee helpers
+- `scenarios.py`
+  - DataFrame scenario generators for notebook analysis
+- `plotting.py`
+  - optional plotting helpers
+
 ## Status
 
-Research artifact in progress.
+Research artifact in progress, close to completion.
 
 Completed:
 
@@ -193,29 +263,35 @@ Completed:
 - quote/execution differential tests
 - admin-fee unit conversion tests
 - selected real StableSwap NG integration checks
+- Curve read-only reentrancy / LP oracle manipulation toy reproduction
+- safe-ordering mitigation comparison
+- Python simulation package
+- three focused simulation notebooks
+
+Current local result:
 
 ```bash
-uv run pytest historical-attacks/curve-readonly-reentrancy/tests -q
-# 7 passed
-
-uv run pytest historical-attacks/curve-readonly-reentrancy/tests -q
-# 7 passed
-
-uv run pytest historical-attacks/curve-readonly-reentrancy/tests -q
-# 7 passed
-
 uv run pytest tests -q
 # 109 passed
+
+uv run pytest historical-attacks/curve-readonly-reentrancy/tests -q
+# 7 passed
 ```
 
+Planned before final repo closeout:
 
-Planned:
+- final README / ROADMAP polish
+- optional diagram cleanup
+- final summary article or post
+- optional `case-study.md` refinement if more historical references are added
 
-- factory negative tests
-- metapool underlying quote vs nested execution
-- `get_dx` / reverse-quote approximation under dynamic fee paths
-- simulation notebooks
-- Curve read-only reentrancy / LP oracle manipulation toy reproduction: initial version completed
+Not planned for this repo:
+
+- full Curve V2 / CryptoPool analysis
+- full on-chain Curve analytics dashboard
+- multi-pool arbitrage backtesting
+- complete Curve ecosystem incident database
+- unrelated non-Curve historical attacks
 
 ## Related files
 
@@ -224,9 +300,10 @@ Planned:
 - [`ROADMAP.md`](ROADMAP.md) — planned next steps
 - [`notes/curve-review-notes.md`](notes/curve-review-notes.md) — public review note
 - [`notes/final-review.md`](notes/final-review.md) — internal-style final review summary
+- [`historical-attacks/curve-readonly-reentrancy/case-study.md`](historical-attacks/curve-readonly-reentrancy/case-study.md) — historical mechanism case study
 
 ## Disclaimer
 
 This repository is not a full protocol audit and does not prove the absence of vulnerabilities.
 
-It is a focused security research artifact intended to clarify selected StableSwap and StableSwap NG accounting boundaries.
+It is a focused security research artifact intended to clarify selected StableSwap and StableSwap NG accounting boundaries, quote-freshness assumptions, and Curve LP oracle integration risks.
