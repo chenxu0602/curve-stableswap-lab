@@ -11,8 +11,6 @@ __pycache__/
 .idea/
 
 # Outputs
-outputs/figures/*
-outputs/tables/*
 !outputs/figures/.gitkeep
 !outputs/tables/.gitkeep
 
